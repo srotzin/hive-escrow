@@ -74,17 +74,19 @@ const app = express();
 app.use(express.json());
 
 // ---------------------------------------------------------------------------
-// GET /health
+// GET /health and /healthz
 // ---------------------------------------------------------------------------
-app.get('/health', (_req, res) => {
-  res.json({
+function healthResponse() {
+  return {
     status: 'ok',
     service: 'hive-escrow',
     version: '1.0.0',
     take_rate_bps: TAKE_RATE_BPS,
     escrows_in_memory: escrows.size
-  });
-});
+  };
+}
+app.get('/health', (_req, res) => res.json(healthResponse()));
+app.get('/healthz', (_req, res) => res.json(healthResponse()));
 
 // ---------------------------------------------------------------------------
 // GET /
