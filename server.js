@@ -450,8 +450,63 @@ function doCancel(escrow_id, reason) {
 // REST endpoints
 // ---------------------------------------------------------------------------
 
-// POST /v1/escrow/create — free, no 402
-app.post('/v1/escrow/create', (req, res) => {
+// ── BOGO redemption middleware (X-Hive-BOGO-Token) ─────────────────────────
+// Phase 1: calls hive-gamification /v1/bogo/redeem; bypasses 402 on consumed:true.
+// Phase 2 (planned): zero-trust redemption with token-bound HMAC.
+async function bogoRedeemMiddleware(req, res, next) {
+  const token = req.headers['x-hive-bogo-token'];
+  if (!token) return next();
+  try {
+    const r = await fetch('https://hive-gamification.onrender.com/v1/bogo/redeem', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, mechanic_id: 'escrow-create' }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (r.ok) {
+      const j = await r.json();
+      if (j.consumed === true) {
+        req._bogo_redeemed = true;
+        import('fs').then(({ appendFileSync }) => {
+          try { appendFileSync('/tmp/escrow_bogo_redemptions.jsonl', JSON.stringify({ token: token.slice(0, 12), mechanic_id: 'escrow-create', ts: Date.now() }) + '\n'); } catch (_) {}
+        });
+        return next();
+      }
+    }
+  } catch (_) {}
+  return next();
+}
+
+// POST /v1/escrow/create — x402-gated ($0.50 USDC) with BOGO bypass
+app.post('/v1/escrow/create', bogoRedeemMiddleware, (req, res) => {
+  // BOGO bypass or require x402 payment
+  if (!req._bogo_redeemed) {
+    const paymentHeader = req.headers['x-payment'] || req.headers['x-payment-receipt'];
+    if (!paymentHeader) {
+      return res.status(402).json({
+        x402Version: 1,
+        error: 'Payment required',
+        accepts: [{
+          scheme: 'exact',
+          network: 'base',
+          chainId: 8453,
+          asset: 'USDC',
+          contract: USDC_CONTRACT,
+          maxAmountRequired: '500000', // $0.50 USDC atomic
+          payTo: MONROE,
+          resource: '/v1/escrow/create',
+          description: 'Escrow create — $0.50 USDC on Base mainnet',
+          mimeType: 'application/json',
+        }],
+        bogo: {
+          first_use_free: true,
+          claim_endpoint: 'https://hive-gamification.onrender.com/v1/bogo/claim',
+          redeem_header: 'X-Hive-BOGO-Token',
+          mechanic_id: 'escrow-create',
+        },
+      });
+    }
+  }
   const result = doCreateEscrow(req.body || {});
   if (result.error) return res.status(result.status || 400).json({ error: result.error });
   res.status(201).json(result);
