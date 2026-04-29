@@ -1,0 +1,138 @@
+startCommand:
+  type: http
+  configSchema:
+    type: object
+    properties: {}
+    required: []
+  url: https://hive-escrow.onrender.com/mcp
+
+name: hive-escrow
+displayName: Hive Escrow
+version: "1.0.0"
+description: >
+  A2A escrow service on Base USDC. Create, fund, and release agent-to-agent
+  escrows with real x402 payment gating. 50 bps (0.5%) take rate deducted
+  at release, accrued to Monroe treasury. Phase 1: x402 funding with offline
+  release queue. Phase 2: on-chain release via authorized treasury wallet.
+  Part of the Hive Civilization agent network.
+
+author:
+  name: Steve Rotzin
+  email: steve@thehiveryiq.com
+  url: https://www.thehiveryiq.com
+
+license: MIT
+homepage: https://hive-escrow.onrender.com
+icon: https://www.thehiveryiq.com/favicon.ico
+
+repository:
+  type: git
+  url: https://github.com/srotzin/hive-escrow
+
+transport: streamable-http
+endpoint: https://hive-escrow.onrender.com/mcp
+protocol: "2024-11-05"
+
+categories:
+  - finance
+  - agent-to-agent
+  - defi
+  - payment-infrastructure
+
+tags:
+  - mcp
+  - x402
+  - escrow
+  - base-l2
+  - usdc
+  - a2a
+  - hive
+  - payments
+  - ai-agents
+  - defai
+
+tools:
+  - name: create_escrow
+    description: >
+      Create a new A2A escrow record. Returns escrow_id, Monroe custody address,
+      and x402 funding challenge. No payment required to create.
+    inputs:
+      - name: amount_atomic
+        type: integer
+        required: true
+        description: "Amount in USDC atomic units (1 USDC = 1000000)."
+      - name: payer_did
+        type: string
+        required: true
+        description: "W3C DID of the paying party."
+      - name: payee_did
+        type: string
+        required: true
+        description: "W3C DID of the receiving party."
+      - name: conditions
+        type: string
+        required: true
+        description: "Human-readable release conditions."
+      - name: expires_in_seconds
+        type: integer
+        required: false
+        description: "TTL in seconds. Default: 86400 (24h)."
+
+  - name: fund_escrow
+    description: >
+      Fund an escrow via x402 USDC payment on Base. Requires EIP-3009
+      transferWithAuthorization proof as x_payment argument.
+    inputs:
+      - name: escrow_id
+        type: string
+        required: true
+        description: "Escrow ID from create_escrow."
+      - name: x_payment
+        type: string
+        required: true
+        description: "EIP-3009 transferWithAuthorization proof (X-PAYMENT header value)."
+
+  - name: release_escrow
+    description: >
+      Release funded escrow to payee. 50 bps deducted and accrued to Monroe
+      treasury. Phase 1: queued for offline release.
+    inputs:
+      - name: escrow_id
+        type: string
+        required: true
+      - name: payee_address
+        type: string
+        required: true
+        description: "EVM address to receive net payout."
+
+  - name: cancel_escrow
+    description: >
+      Cancel an escrow. Valid for created (no payment captured) or funded
+      (refund queue) states.
+    inputs:
+      - name: escrow_id
+        type: string
+        required: true
+      - name: reason
+        type: string
+        required: false
+
+  - name: get_escrow_status
+    description: >
+      Retrieve current state and metadata for an escrow.
+    inputs:
+      - name: escrow_id
+        type: string
+        required: true
+
+runtime:
+  type: node
+  version: ">=18"
+  command: node server.js
+  env:
+    - name: PORT
+      default: "3000"
+      required: false
+    - name: NODE_ENV
+      default: "production"
+      required: false

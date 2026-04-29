@@ -1,0 +1,17 @@
+{
+  "name": "hive-escrow",
+  "version": "1.0.0",
+  "description": "A2A escrow on Base USDC. 50 bps take at release. Real x402 funding.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT"
+}

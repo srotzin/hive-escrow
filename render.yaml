@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: hive-escrow
+    env: node
+    plan: starter
+    region: oregon
+    branch: main
+    buildCommand: npm install
+    startCommand: node server.js
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: NODE_ENV
+        value: "production"
+      - key: MONROE_TREASURY
+        value: "0x15184bf50b3d3f52b60434f8942b7d52f2eb436e"
+      - key: BASE_URL
+        value: "https://hive-escrow.onrender.com"
+      - key: TAKE_RATE_BPS
+        value: "50"
+      - key: DATA_DIR
+        value: "/data"
+    disk:
+      name: hive-escrow-data
+      mountPath: /data
+      sizeGB: 1
